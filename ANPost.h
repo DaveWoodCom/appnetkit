@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/19/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANIdentifiedResource.h"
@@ -28,7 +28,8 @@
 
 @property (readonly) BOOL machineOnly;
 
-// Either repostOf.ID or just ID
+// self.repostOf if this is a repost, self otherwise.
+@property (readonly) ANPost * originalPost;
 @property (readonly) ANResourceID originalID;
 
 @property (readonly) ANResourceID replyTo;

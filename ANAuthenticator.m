@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/17/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANAuthenticator.h"
@@ -31,12 +31,20 @@ NSString * const ANScopeExport = @"export";
     return self;
 }
 
+- (NSString*)parameterForScopes:(NSArray*)scopes {
+    return [scopes componentsJoinedByString:@" "];
+}
+
 - (NSString*)parametersForScopes:(NSArray *)scopes {
+    NSParameterAssert(scopes);
+    NSAssert(self.clientID, @"ANAuthenticator.clientID not set");
+    NSAssert(self.redirectURL, @"ANAuthenticator.redirectURL not set");
+    
     NSMutableDictionary * params = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                                     self.clientID, @"client_id",
                                     @"token", @"response_type",
                                     self.redirectURL.absoluteString, @"redirect_uri",
-                                    [scopes componentsJoinedByString:@" "], @"scope",
+                                    [self parameterForScopes:scopes], @"scope",
                                     nil];
     
     if(self.omitsPaymentOptions) {
@@ -57,6 +65,7 @@ NSString * const ANScopeExport = @"export";
 }
 
 - (BOOL)isRedirectURL:(NSURL *)url {
+    NSAssert(self.redirectURL, @"ANAuthenticator.redirectURL has not been set");
     return [url.scheme isEqualToString:self.redirectURL.scheme] && [url.host isEqualToString:self.redirectURL.host] && [url.path isEqualToString:self.redirectURL.path];
 }
 
@@ -104,33 +113,38 @@ NSString * const ANScopeExport = @"export";
     return nil;
 }
 
-- (void)accessTokenWithPasswordGrantSecret:(NSString *)passwordGrantSecret username:(NSString *)username password:(NSString *)password scopes:(NSString *)scopes completion:(void (^)(NSString *accessToken, id rep, NSError * error))completion
-{
-    ANSession *anSession = [ANSession defaultSession];
-    ANMutableRequest *authRequest = [[ANMutableRequest alloc] initWithSession:anSession];
+- (void)accessTokenForScopes:(NSArray *)scopes withUsername:(NSString *)username password:(NSString *)password completion:(void (^)(NSString *accessToken, id rep, NSError * error))completion {
+    NSAssert(self.clientID, @"ANAuthenticator.clientID not set");
+    NSAssert(self.passwordGrantSecret, @"You must set ANAuthenticator.passwordGrantSecret before calling -%@", NSStringFromSelector(_cmd));
+    
+    ANMutableRequest *authRequest = [[ANMutableRequest alloc] initWithSession:ANSession.defaultSession];
+    
     authRequest.URL = [NSURL URLWithString:@"https://alpha.app.net/oauth/access_token"];
     authRequest.method = ANRequestMethodPost;
     authRequest.parameterEncoding = ANRequestParameterEncodingURL;
-    authRequest.parameters = @{@"client_id": self.clientID, @"password_grant_secret": passwordGrantSecret, @"grant_type": @"password", @"username": username, @"password": password, @"scope": scopes};
+    authRequest.parameters = [NSDictionary dictionaryWithObjectsAndKeys:@"password", @"grant_type", self.clientID, @"client_id", self.passwordGrantSecret, @"password_grant_secret", username, @"username", password, @"password", [self parameterForScopes:scopes], @"scope", nil];
 
     [authRequest sendRequestWithRepresentationCompletion:^(ANResponse *response, id rep, NSError *error) {
-        if (error)
-        {
+        if (error) {
             NSDictionary *errorResults = [error.userInfo objectForKey:@"json"];
 
-            if ([errorResults isKindOfClass:NSDictionary.class])
-            {
+            if ([errorResults isKindOfClass:NSDictionary.class]) {
                 NSString *errorMessage = [errorResults objectForKey:@"error"];
                 NSString *errorText = [errorResults objectForKey:@"error_text"];
                 NSString *errorTitle = [errorResults objectForKey:@"error_title"];
 
-                NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+                NSMutableDictionary *userInfo = [NSMutableDictionary new];
                 [userInfo setObject:errorMessage forKey:NSLocalizedDescriptionKey];
                 [userInfo setObject:error forKey:NSUnderlyingErrorKey];
-                if (errorText) [userInfo setObject:errorText forKey:@"error_text"];
-                if (errorTitle) [userInfo setObject:errorText forKey:@"error_title"];
+                
+                if (errorText) { 
+                    [userInfo setObject:errorText forKey:ANPasswordErrorTextKey];
+                }
+                if (errorTitle) {
+                    [userInfo setObject:errorText forKey:ANPasswordErrorTitleKey];
+                }
 
-                error = [NSError errorWithDomain:ANErrorDomain code:0 userInfo:userInfo];
+                error = [NSError errorWithDomain:ANErrorDomain code:ANGenericError userInfo:userInfo];
             }
 
             if (completion) {
@@ -142,7 +156,7 @@ NSString * const ANScopeExport = @"export";
         NSString *accessToken = nil;
 
         if([rep isKindOfClass:NSDictionary.class]) {
-            accessToken = [(NSDictionary *)rep objectForKey:@"access_token"];
+            accessToken = [rep objectForKey:@"access_token"];
         }
 
         if (completion) {

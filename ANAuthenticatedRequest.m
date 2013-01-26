@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/18/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANAuthenticatedRequest.h"
@@ -21,12 +21,23 @@
     return req;
 }
 
++ (BOOL)requiresAccessToken {
+    return YES;
+}
+
+- (BOOL)requiresAccessToken {
+    return self.class.requiresAccessToken;
+}
+
 - (NSMutableURLRequest *)URLRequest {
-    NSAssert(self.session.accessToken, @"Session's access token has not been set");
-    
     NSMutableURLRequest * req = super.URLRequest;
     
-    [req setValue:[NSString stringWithFormat:@"Bearer %@", self.session.accessToken] forHTTPHeaderField:@"Authorization"];
+    if(self.session.accessToken) {
+        [req setValue:[NSString stringWithFormat:@"Bearer %@", self.session.accessToken] forHTTPHeaderField:@"Authorization"];
+    }
+    else {
+        NSAssert(!self.requiresAccessToken, @"Session's access token has not been set");
+    }
     
     return req;
 }

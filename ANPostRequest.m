@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/19/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANPostRequest.h"
@@ -20,6 +20,10 @@
 
 - (ANRequestMethod)method {
     return ANRequestMethodGet;
+}
+
++ (BOOL)requiresAccessToken {
+    return NO;
 }
 
 - (void)sendRequestWithCompletion:(ANPostRequestCompletion)completion {

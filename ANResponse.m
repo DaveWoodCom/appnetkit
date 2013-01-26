@@ -3,7 +3,7 @@
 //  Appdate
 //
 //  Created by Brent Royal-Gordon on 9/2/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANResponse.h"
@@ -23,6 +23,10 @@
 @dynamic minID;
 @dynamic maxID;
 @dynamic more;
+@dynamic errorMessage;
+
+@dynamic marker;
+@dynamic markerRepresentation;
 
 - (NSUInteger)statusCode {
     return self.code;

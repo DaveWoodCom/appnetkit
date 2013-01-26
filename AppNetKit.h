@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/18/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import <Foundation/Foundation.h>
@@ -12,6 +12,10 @@
 
 extern NSString * const ANErrorDomain;
 extern NSString * const ANExplanationURLKey;
+
+// Used with password auth
+extern NSString * const ANPasswordErrorTitleKey;
+extern NSString * const ANPasswordErrorTextKey;
 
 typedef enum {
     ANGenericError,
@@ -56,6 +60,7 @@ typedef enum {
 #import "ANSession.h"
 #import "ANUser.h"
 #import "ANPost.h"
+#import "ANFilter.h"
 #import "ANAnnotation.h"
 #import "ANEntity.h"
 #import "ANSource.h"

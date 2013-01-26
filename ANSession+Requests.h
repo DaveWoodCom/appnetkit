@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/19/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANSession.h"
@@ -36,6 +36,9 @@
 - (void)postsInStreamWithCompletion:(ANPostListRequestCompletion)completion;
 - (void)postsInStreamBetweenID:(ANResourceID)sinceID andID:(ANResourceID)beforeID completion:(ANPostListRequestCompletion)completion;
 
+- (void)postsInUnifiedStreamWithCompletion:(ANPostListRequestCompletion)completion;
+- (void)postsInUnifiedStreamBetweenID:(ANResourceID)sinceID andID:(ANResourceID)beforeID completion:(ANPostListRequestCompletion)completion;
+
 - (void)postsInGlobalStreamWithCompletion:(ANPostListRequestCompletion)completion;
 - (void)postsInGlobalStreamBetweenID:(ANResourceID)sinceID andID:(ANResourceID)beforeID completion:(ANPostListRequestCompletion)completion;
 
@@ -54,5 +57,15 @@
 - (void)unrepostPostWithID:(ANResourceID)postID completion:(ANPostRequestCompletion)completion;
 
 - (void)usersWithPostWithIDReposted:(ANResourceID)postID completion:(ANUserListRequestCompletion)completion;
+
+- (void)filtersWithCompletion:(ANFilterListRequestCompletion)completion;
+- (void)deleteFiltersWithCompletion:(ANFilterListRequestCompletion)completion;
+
+- (void)filterWithID:(ANResourceID)ID completion:(ANFilterRequestCompletion)completion;
+- (void)createFilterFromDraft:(ANDraftFilter*)draftFilter completion:(ANFilterRequestCompletion)completion;
+- (void)deleteFilterWithID:(ANResourceID)ID completion:(ANFilterRequestCompletion)completion;
+- (void)updateFilterWithID:(ANResourceID)ID fromDraft:(ANDraftFilter*)draftFilter completion:(ANFilterRequestCompletion)completion;
+
+- (void)updateStreamMarkerWithDraft:(ANDraftStreamMarker*)draftMarker completion:(ANStreamMarkerRequestCompletion)completion;
 
 @end

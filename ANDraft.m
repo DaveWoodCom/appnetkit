@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/23/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANDraft.h"
@@ -14,6 +14,7 @@
 - (id)init {
     if((self = [super init])) {
         _annotations = [NSMutableArray new];
+        _entities = [ANDraftEntitySet new];
     }
     return self;
 }
@@ -35,6 +36,11 @@
         [dict setObject:[self.annotations valueForKey:@"representation"] forKey:@"annotations"];
     }
     
+    id entitiesRep = self.entities.representation;
+    if(entitiesRep) {
+        [dict setObject:entitiesRep forKey:@"entities"];
+    }
+    
     return dict.copy;
 }
 
@@ -46,14 +52,16 @@
         self.replyTo = [ANResource.IDFormatter numberFromString:[dict objectForKey:@"reply_to"]].unsignedLongLongValue;
     }
     
-    [_annotations removeAllObjects];
+    [self.annotations removeAllObjects];
     if([dict objectForKey:@"annotations"]) {
         for(NSDictionary * annotationRep in [dict objectForKey:@"annotations"]) {
             ANDraftAnnotation * annotation = [ANDraftAnnotation new];
             annotation.representation = annotationRep;
-            [_annotations addObject:	annotation];
+            [self.annotations addObject:annotation];
         }
     }
+    
+    self.entities.representation = [dict objectForKey:@"entities"];
 }
 
 - (void)createPostViaSession:(ANSession*)session completion:(ANPostRequestCompletion)completion {
@@ -61,48 +69,3 @@
 }
 
 @end
-
-@implementation ANDraftAnnotation
-
-- (NSDictionary *)representation {
-    return [NSDictionary dictionaryWithObjectsAndKeys:
-            self.type, @"type",
-            self.value, @"value",
-            nil];
-}
-
-- (void)setRepresentation:(NSDictionary *)dict {
-    self.type = [dict objectForKey:@"type"];
-    self.value = [dict objectForKey:@"value"];
-}
-
-@end
-
-#if APPNETKIT_USE_CORE_LOCATION
-
-@implementation ANDraftAnnotation (CLLocation)
-
-+ (ANDraftAnnotation *)draftAnnotationWithGeolocationValue:(CLLocation *)location {
-    NSMutableDictionary * dict = [NSMutableDictionary new];
-    [dict setObject:[NSNumber numberWithDouble:location.coordinate.latitude] forKey:@"latitude"];
-    [dict setObject:[NSNumber numberWithDouble:location.coordinate.longitude] forKey:@"longitude"];
-    
-    if(location.verticalAccuracy >= 0) {
-        [dict setObject:[NSNumber numberWithDouble:location.altitude] forKey:@"altitude"];
-    }
-    if(location.verticalAccuracy > 0) {
-        [dict setObject:[NSNumber numberWithDouble:location.verticalAccuracy] forKey:@"vertical_accuracy"];
-    }
-    if(location.horizontalAccuracy > 0) {
-        [dict setObject:[NSNumber numberWithDouble:location.horizontalAccuracy] forKey:@"horizontal_accuracy"];
-    }
-    
-    ANDraftAnnotation * annotation = [ANDraftAnnotation new];
-    annotation.type = ANAnnotationTypeGeolocation;
-    annotation.value = dict.copy;
-    return annotation;
-}
-
-@end
-
-#endif

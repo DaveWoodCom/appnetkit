@@ -3,11 +3,12 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/18/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANSession.h"
 #import "ANSession+ANResource_Private.h"
+#import "_ANIdentifiedResourceSet.h"
 
 const ANResourceID ANMeUserID = 0;
 const ANResourceID ANUnspecifiedPostID = 0;
@@ -16,8 +17,8 @@ NSInteger NetworkActivityCount;
 
 @interface ANSession ()
 
-@property (strong,nonatomic) NSHashTable * resources;
-@property (strong,nonatomic) dispatch_queue_t resourceUniquingQueue;
+@property (strong,nonatomic) _ANIdentifiedResourceSet * resourceSet;
+@property (nonatomic) dispatch_queue_t resourceUniquingQueue;
 
 @end
 
@@ -44,13 +45,13 @@ NSInteger NetworkActivityCount;
 
 - (id)init {
     if((self = [super init])) {
-        _resources = [NSHashTable weakObjectsHashTable];
+        _resourceSet = [_ANIdentifiedResourceSet new];
         _resourceUniquingQueue = dispatch_queue_create("ANSession resource uniquing queue", DISPATCH_QUEUE_SERIAL);
     }
     return self;
 }
 
-+ (ANSession *)defaultSession {
++ (ANSession *)defaultDefaultSession {
     static ANSession * singleton;
     static dispatch_once_t once;
     
@@ -59,6 +60,16 @@ NSInteger NetworkActivityCount;
     });
     
     return singleton;
+}
+
+static ANSession * DefaultSession = nil;
+
++ (ANSession*)defaultSession {
+    return DefaultSession ?: [self defaultDefaultSession];
+}
+
++ (void)setDefaultSession:(ANSession*)defaultSession {
+    DefaultSession = defaultSession;
 }
 
 - (NSURL *)URLForStreamAPIVersion:(ANStreamAPIVersion)version {
@@ -136,20 +147,55 @@ NSInteger NetworkActivityCount;
     }
 }
 
-- (id)uniqueResource:(ANResource *)r {
-    __block ANResource * resource = r;
+- (void)completeFilterRequest:(ANFilterRequestCompletion)completion withResponse:(ANResponse*)response representation:(NSDictionary*)rep error:(NSError*)error {
+    if(rep) {
+        ANFilter * filter = [[ANFilter alloc] initWithRepresentation:rep session:self];
+        completion(response, filter, nil);
+    }
+    else {
+        completion(response, nil, error);
+    }
+}
+
+- (void)completeFilterListRequest:(ANFilterListRequestCompletion)completion withResponse:(ANResponse*)response representation:(NSArray*)rep error:(NSError*)error {
+    if(rep) {
+        NSMutableArray * filters = [[NSMutableArray alloc] initWithCapacity:rep.count];
+        for(NSDictionary * filterRep in rep) {
+            ANFilter * filter = [[ANFilter alloc] initWithRepresentation:filterRep session:self];
+            [filters addObject:filter];
+        }
+        
+        completion(response, filters.copy, nil);
+    }
+    else {
+        completion(response, nil, error);
+    }
+}
+
+- (void)completeStreamMarkerRequest:(ANStreamMarkerRequestCompletion)completion withResponse:(ANResponse *)response representation:(NSDictionary *)rep error:(NSError *)error {
+    if(rep) {
+        ANStreamMarker * marker = [[ANStreamMarker alloc] initWithRepresentation:rep session:self];
+        completion(response, marker, nil);
+    }
+    else {
+        completion(response, nil, error);
+    }
+}
+
+- (id)uniqueResource:(ANIdentifiedResource *)r {
+    __block ANIdentifiedResource * resource = r;
     
     // We do this in a queue so that only one thread can be adjusting the resource set at a time.
     dispatch_sync(self.resourceUniquingQueue, ^{
-        ANResource * existingResource = [self.resources member:resource];
+        ANIdentifiedResource * existingResource = [self.resourceSet existingResource:resource];
         
         if(existingResource) {
-            [self.resources removeObject:existingResource];
+            [self.resourceSet removeResource:existingResource];
             existingResource.representation = resource.representation;
             resource = existingResource;
         }
         
-        [self.resources addObject:resource];
+        [self.resourceSet addResource:resource];
     });
     
     return resource;

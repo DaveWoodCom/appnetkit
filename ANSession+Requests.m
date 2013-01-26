@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/19/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANSession+Requests.h"
@@ -34,6 +34,14 @@
 #import "ANUnrepostPostRequest.h"
 #import "ANUsersWithPostRepostedRequest.h"
 #import "ANUsersMatchingSearchQueryRequest.h"
+#import "ANFiltersForCurrentUserRequest.h"
+#import "ANFilterRequest.h"
+#import "ANCreateFilterRequest.h"
+#import "ANDeleteFilterRequest.h"
+#import "ANDeleteFiltersForUserRequest.h"
+#import "ANUpdateFilterRequest.h"
+#import "ANPostsInUserUnifiedStreamRequest.h"
+#import "ANUpdateStreamMarkerRequest.h"
 
 @implementation ANSession (Requests)
 
@@ -180,6 +188,19 @@
     [req sendRequestWithCompletion:completion];
 }
 
+- (void)postsInUnifiedStreamWithCompletion:(ANPostListRequestCompletion)completion {
+    [self postsInUnifiedStreamBetweenID:ANUnspecifiedPostID andID:ANUnspecifiedPostID completion:completion];
+}
+
+- (void)postsInUnifiedStreamBetweenID:(ANResourceID)sinceID andID:(ANResourceID)beforeID completion:(ANPostListRequestCompletion)completion {
+    ANPostsInUserUnifiedStreamRequest * req = [[ANPostsInUserUnifiedStreamRequest alloc] initWithSession:self];
+    
+    req.sinceID = sinceID;
+    req.beforeID = beforeID;
+    
+    [req sendRequestWithCompletion:completion];
+}
+
 - (void)postsMentioningUserWithID:(ANResourceID)ID betweenID:(ANResourceID)sinceID andID:(ANResourceID)beforeID completion:(ANPostListRequestCompletion)completion {
     ANPostsMentioningUserRequest * req = [[ANPostsMentioningUserRequest alloc] initWithSession:self];
     
@@ -271,6 +292,57 @@
     ANUsersWithPostRepostedRequest * req = [[ANUsersWithPostRepostedRequest alloc] initWithSession:self];
     
     req.postID = postID;
+    
+    [req sendRequestWithCompletion:completion];
+}
+
+- (void)filtersWithCompletion:(ANFilterListRequestCompletion)completion {
+    ANFiltersForCurrentUserRequest * req = [[ANFiltersForCurrentUserRequest alloc] initWithSession:self];
+    [req sendRequestWithCompletion:completion];
+}
+
+- (void)deleteFiltersWithCompletion:(ANFilterListRequestCompletion)completion {
+    ANDeleteFiltersForUserRequest * req = [[ANDeleteFiltersForUserRequest alloc] initWithSession:self];
+    [req sendRequestWithCompletion:completion];
+}
+
+- (void)filterWithID:(ANResourceID)ID completion:(ANFilterRequestCompletion)completion {
+    ANFilterRequest * req = [[ANFilterRequest alloc] initWithSession:self];
+    
+    req.filterID = ID;
+    
+    [req sendRequestWithCompletion:completion];
+}
+
+- (void)createFilterFromDraft:(ANDraftFilter*)draftFilter completion:(ANFilterRequestCompletion)completion {
+    ANCreateFilterRequest * req = [[ANCreateFilterRequest alloc] initWithSession:self];
+    
+    req.draftFilter = draftFilter;
+    
+    [req sendRequestWithCompletion:completion];
+}
+
+- (void)deleteFilterWithID:(ANResourceID)ID completion:(ANFilterRequestCompletion)completion {
+    ANDeleteFilterRequest * req = [[ANDeleteFilterRequest alloc] initWithSession:self];
+    
+    req.filterID = ID;
+    
+    [req sendRequestWithCompletion:completion];
+}
+
+- (void)updateFilterWithID:(ANResourceID)ID fromDraft:(ANDraftFilter*)draftFilter completion:(ANFilterRequestCompletion)completion {
+    ANUpdateFilterRequest * req = [[ANUpdateFilterRequest alloc] initWithSession:self];
+    
+    req.filterID = ID;
+    req.draftFilter = draftFilter;
+    
+    [req sendRequestWithCompletion:completion];
+}
+
+- (void)updateStreamMarkerWithDraft:(ANDraftStreamMarker*)draftMarker completion:(ANStreamMarkerRequestCompletion)completion {
+    ANUpdateStreamMarkerRequest * req = [[ANUpdateStreamMarkerRequest alloc] initWithSession:self];
+    
+    req.draftMarker = draftMarker;
     
     [req sendRequestWithCompletion:completion];
 }

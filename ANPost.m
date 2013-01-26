@@ -3,11 +3,11 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/19/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANPost.h"
-#import <objc/runtime.h>
+#import "NSObject+AssociatedObject.h"
 
 @implementation ANPost
 
@@ -38,10 +38,11 @@
 @dynamic repostOfRepresentation;
 
 - (ANAnnotationSet *)annotations {
-    ANAnnotationSet * annotations = objc_getAssociatedObject(self, _cmd);
+    // We use an associated object here so that setRepresentation: will clear it.
+    ANAnnotationSet * annotations = [self associatedObjectForKey:_cmd];
     if(!annotations) {
         annotations = [[ANAnnotationSet alloc] initWithRepresentation:self.annotationRepresentations session:self.session];
-        objc_setAssociatedObject(self, _cmd, annotations, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [self setAssociatedObject:annotations forKey:_cmd];
     }
     return annotations;
 }
@@ -64,6 +65,7 @@
     ANDraft * draft = [ANDraft new];
     
     draft.text = [NSString stringWithFormat:@"» %@ %@", self.user.username.appNetUsernameString, self.text];
+    [draft.entities.links addObjectsFromArray:[self.entities.links valueForKey:@"draftEntity"]];
     
     return draft;
 }
@@ -75,51 +77,64 @@
     draft.replyTo = self.replyTo;
     [draft.annotations setArray:[self.annotations.all valueForKey:@"draftAnnotation"]];
     
+    draft.machineOnly = self.machineOnly;
+    
+    if(self.machineOnly) {
+        [draft.entities.mentions addObjectsFromArray:[self.entities.mentions valueForKey:@"draftEntity"]];
+    }
+    else {
+        [draft.entities.links addObjectsFromArray:[self.entities.links valueForKey:@"draftEntity"]];
+    }
+    
     return draft;
 }
 
-- (ANDraft*)draftReply {
-    ANDraft * draft = [self.user draftMention];
+- (NSMutableOrderedSet*)mentionsForDirectReply {
+    NSMutableOrderedSet * mentions = self.repostOf ? [self.repostOf mentionsForDirectReply] : [NSMutableOrderedSet new];
     
+    [mentions addObject:self.user.username.appNetUsernameString];
+    
+    return mentions;
+}
+
+- (ANDraft*)draftReply {
+    ANDraft * draft = [ANDraft new];
+    
+    draft.text = [[self.mentionsForDirectReply.array componentsJoinedByString:@" "] stringByAppendingString:@" "];
     draft.replyTo = self.originalID;
+    
+    return draft;
+}
+
+- (ANDraft*)draftReplyToAllExcept:(BOOL (^)(ANEntity * mention))rejectionBlock {
+    ANDraft * draft = [self draftReply];
+    
+    NSMutableOrderedSet * usernames = self.mentionsForDirectReply;
+    for(ANEntity * mention in self.entities.mentions) {
+        if(!rejectionBlock(mention)) {
+            [usernames addObject:mention.name.appNetUsernameString];
+        }
+    }
+    
+    draft.text = [[usernames.array componentsJoinedByString:@" "] stringByAppendingString:@" "];
     
     return draft;
 }
 
 - (ANDraft*)draftReplyToAllExceptUser:(ANUser*)user {
-    NSMutableOrderedSet * usernames = [NSMutableOrderedSet orderedSetWithObject:self.user.username.appNetUsernameString];
-    for(ANEntity * mention in self.entities.mentions) {
-        if(mention.userID != user.ID) {
-            [usernames addObject:mention.name.appNetUsernameString];
-        }
-    }
-    
-    ANDraft * draft = [ANDraft new];
-    
-    draft.text = [[usernames.array componentsJoinedByString:@" "] stringByAppendingString:@" "];
-    draft.replyTo = self.originalID;
-    
-    return draft;
+    return [self draftReplyToAllExcept:^BOOL(ANEntity *mention) {
+        return mention.userID == user.ID;
+    }];
 }
 
 - (ANDraft*)draftReplyToAllExceptUsername:(NSString*)username {
-    NSMutableOrderedSet * usernames = [NSMutableOrderedSet orderedSetWithObject:self.user.username.appNetUsernameString];
-    for(ANEntity * mention in self.entities.mentions) {
-        if(![mention.name isEqualToString:username]) {
-            [usernames addObject:mention.name.appNetUsernameString];
-        }
-    }
-    
-    ANDraft * draft = [ANDraft new];
-    
-    draft.text = [[usernames.array componentsJoinedByString:@" "] stringByAppendingString:@" "];
-    draft.replyTo = self.originalID;
-    
-    return draft;
+    return [self draftReplyToAllExcept:^BOOL(ANEntity *mention) {
+        return [mention.name isEqualToString:username];
+    }];
 }
 
 - (void)postRepliedToWithCompletion:(ANPostRequestCompletion)completion {
-    [self.session postWithID:self.originalID completion:completion];
+    [self.session postWithID:self.originalPost.replyTo completion:completion];
 }
 
 - (void)replyPostsWithCompletion:(ANPostListRequestCompletion)completion {
@@ -127,7 +142,7 @@
 }
 
 - (void)postAtThreadRootWithCompletion:(ANPostRequestCompletion)completion {
-    [self.session postWithID:self.originalID completion:completion];
+    [self.session postWithID:self.originalPost.threadID completion:completion];
 }
 
 - (void)deleteWithCompletion:(ANPostRequestCompletion)completion {
@@ -147,14 +162,22 @@
 }
 
 + (NSSet *)keyPathsForValuesAffectingOriginalID {
-    return [NSSet setWithObjects:@"ID", @"repostOf.ID", nil];
+    return [NSSet setWithObject:@"originalPost.ID"];
 }
 
 - (ANResourceID)originalID {
+    return self.originalPost.ID;
+}
+
++ (NSSet *)keyPathsForValuesAffectingOriginalPost {
+    return [NSSet setWithObject:@"repostOf"];
+}
+
+- (ANPost *)originalPost {
     if(self.repostOf) {
-        return self.repostOf.ID;
+        return self.repostOf;
     }
-    return self.ID;
+    return self;
 }
 
 - (void)repostWithCompletion:(ANPostRequestCompletion)completion {

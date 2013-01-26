@@ -37,7 +37,7 @@
     return req;
 }
 
-@dynamic URL, parameters, method, parameterEncoding;
+@dynamic URL, parameters, method;
 
 - (NSString*)methodString {
     switch (self.method) {
@@ -49,6 +49,9 @@
             
         case ANRequestMethodDelete:
             return @"DELETE";
+            
+        case ANRequestMethodPut:
+            return @"PUT";
             
         default:
             NSAssert(NO, @"Unknown method %d", self.method);
@@ -69,6 +72,10 @@
     return [NSURL URLWithString:[NSString stringWithFormat:@"%@?%@", self.URL.absoluteString, params.queryString]];
 }
 
+- (ANRequestParameterEncoding)parameterEncoding {
+    return ANRequestParameterEncodingJSON;
+}
+
 - (NSData *)body {
     if(self.method == ANRequestMethodGet) {
         return nil;
@@ -84,14 +91,7 @@
 
     switch (self.parameterEncoding) {
         case ANRequestParameterEncodingURL:
-            {
-                NSMutableString *parameterString = [[NSMutableString alloc] init];
-                [params enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-                    [parameterString appendFormat:@"%@=%@&", [key urlEncodedString], [obj urlEncodedString]];
-                }];
-                [parameterString deleteCharactersInRange:NSMakeRange([parameterString length] - 1, 1)];
-                data = [parameterString dataUsingEncoding:NSUTF8StringEncoding];
-            }
+            data = params.formBodyData;
             break;
 
         case ANRequestParameterEncodingJSON:
@@ -163,6 +163,14 @@
             }
         }
         
+        if(error.code == NSURLErrorUserCancelledAuthentication && [error.domain isEqualToString:NSURLErrorDomain]) {
+            NSMutableDictionary * userInfo = error.userInfo.mutableCopy;
+            [userInfo setObject:NSLocalizedString(@"Your account is not allowed to perform this operation.", @"") forKey:NSLocalizedDescriptionKey];
+            [userInfo setObject:error forKey:NSUnderlyingErrorKey];
+            
+            error = [NSError errorWithDomain:error.domain code:error.code userInfo:userInfo.copy];
+        }
+        
         if(error) {
             completion(body, error);
             return;
@@ -198,9 +206,17 @@
         if(!error) {
             error = jsonError;
         }
-        if(error && json) {
+        if(error && (response || json)) {
             NSMutableDictionary *userInfo = [error.userInfo mutableCopy];
-            [userInfo setObject:json forKey:@"json"];
+            
+            [userInfo setObject:error forKey:NSUnderlyingErrorKey];
+            if(json) {
+                [userInfo setObject:json forKey:@"json"];
+            }
+            if(response.errorMessage) {
+                [userInfo setObject:response.errorMessage forKey:NSLocalizedDescriptionKey];
+            }
+            
             error = [NSError errorWithDomain:error.domain code:error.code userInfo:userInfo];
 
             json = nil;

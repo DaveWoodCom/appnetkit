@@ -3,7 +3,7 @@
 //  AppNetKit
 //
 //  Created by Brent Royal-Gordon on 8/18/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANResource.h"
@@ -11,7 +11,7 @@
 #import "ANSession.h"
 #import "ANSession+ANResource_Private.h"
 
-#import <objc/runtime.h>
+#import "NSObject+AssociatedObject.h"
 
 NSString * const ANResourceDidUpdateNotification = @"ANResourceDidUpdate";
 
@@ -61,10 +61,12 @@ NSString * const ANResourceDidUpdateNotification = @"ANResourceDidUpdate";
     [self willChangeValueForKey:@"representation"];
     
     _representation = representation;
-    objc_removeAssociatedObjects(self);
-    
-    [NSNotificationCenter.defaultCenter postNotificationName:ANResourceDidUpdateNotification object:self];
+    [self removeAllAssociatedObjects];
+        
     [self didChangeValueForKey:@"representation"];
+    
+    NSNotification * note = [NSNotification notificationWithName:ANResourceDidUpdateNotification object:self];
+    [NSNotificationQueue.defaultQueue enqueueNotification:note postingStyle:NSPostASAP coalesceMask:NSNotificationCoalescingOnName|NSNotificationCoalescingOnSender forModes:nil];
 }
 
 + (BOOL)automaticallyNotifiesObserversForKey:(NSString *)key {

@@ -3,7 +3,7 @@
 //  Appdate
 //
 //  Created by Brent Royal-Gordon on 9/1/12.
-//  Copyright (c) 2012 Architechies. All rights reserved.
+//  Copyright (c) 2012 Architechies. See README.md for licensing information.
 //
 
 #import "ANResource.h"
@@ -34,6 +34,15 @@ extern NSString * const ANAnnotationTypeGeolocation;
 
 @end
 
+@interface ANDraftAnnotation : NSObject
+
+@property (strong) NSString * type;
+@property (strong) id value;
+
+@property (copy) NSDictionary * representation;
+
+@end
+
 #import "ANDefines.h"
 
 #if APPNETKIT_USE_CORE_LOCATION
@@ -44,4 +53,11 @@ extern NSString * const ANAnnotationTypeGeolocation;
 @property (readonly) CLLocation * geolocationValue;
 
 @end
+
+@interface ANDraftAnnotation (CLLocation)
+
++ (ANDraftAnnotation*)draftAnnotationWithGeolocationValue:(CLLocation*)location;
+
+@end
+
 #endif
